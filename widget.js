@@ -2,11 +2,16 @@
   const scriptTag = document.currentScript;
 
   const webhookUrl = scriptTag?.dataset?.webhook || "";
+  const businessId = scriptTag?.dataset?.businessId || "1";
   const botName = scriptTag?.dataset?.botName || "Asistente del Restaurante";
-  const subtitle = scriptTag?.dataset?.subtitle || "Respuestas automáticas sobre horarios, ubicación y más";
+  const subtitle =
+    scriptTag?.dataset?.subtitle ||
+    "Respuestas automáticas sobre horarios, ubicación y más";
   const primaryColor = scriptTag?.dataset?.primaryColor || "#111827";
   const position = scriptTag?.dataset?.position || "right";
-  const welcomeMessage = scriptTag?.dataset?.welcome || "¡Hola! Soy el asistente del restaurante. ¿En qué puedo ayudarte?";
+  const welcomeMessage =
+    scriptTag?.dataset?.welcome ||
+    "¡Hola! Soy el asistente del restaurante. ¿En qué puedo ayudarte?";
   const reserveUrl = scriptTag?.dataset?.reserveUrl || "";
   const avatarText = scriptTag?.dataset?.avatarText || "AI";
 
@@ -437,7 +442,8 @@
 
     const bubble = document.createElement("div");
     bubble.className = "restaurant-typing-bubble";
-    bubble.innerHTML = '<span class="restaurant-dot"></span><span class="restaurant-dot"></span><span class="restaurant-dot"></span>';
+    bubble.innerHTML =
+      '<span class="restaurant-dot"></span><span class="restaurant-dot"></span><span class="restaurant-dot"></span>';
 
     row.appendChild(avatar);
     row.appendChild(bubble);
@@ -465,12 +471,18 @@
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({
+          message,
+          business_id: Number(businessId)
+        })
       });
 
       const data = await response.json();
       removeTypingIndicator();
-      addMessage(data.response || data.message || "No pude procesar la respuesta.", "bot");
+      addMessage(
+        data.response || data.message || "No pude procesar la respuesta.",
+        "bot"
+      );
     } catch (error) {
       removeTypingIndicator();
       addMessage("Hubo un problema al conectar con el asistente.", "bot");

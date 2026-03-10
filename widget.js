@@ -15,6 +15,11 @@
   const reserveUrl = scriptTag?.dataset?.reserveUrl || "";
   const avatarText = scriptTag?.dataset?.avatarText || "AI";
 
+  // ─── MEMORY CONFIG ───────────────────────────────────────────────
+  const MAX_HISTORY = 10; // max messages kept in context (user + bot)
+  let conversationHistory = []; // { role: "user"|"assistant", content: string }
+  // ─────────────────────────────────────────────────────────────────
+
   if (!webhookUrl) {
     console.error("Restaurant widget: missing data-webhook attribute.");
     return;
@@ -216,7 +221,7 @@
     }
 
     .restaurant-quick-actions {
-      padding: 0 14px 12px;
+      padding: 8px 14px 10px;
       background: #f3f4f6;
       display: flex;
       gap: 8px;
@@ -233,6 +238,11 @@
       cursor: pointer;
       font-size: 12px;
       box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
+      transition: background 0.15s;
+    }
+
+    .restaurant-quick-chip:hover {
+      background: #f9fafb;
     }
 
     .restaurant-chat-input-area {
@@ -250,6 +260,7 @@
       border-radius: 12px;
       font-size: 14px;
       outline: none;
+      font-family: Arial, sans-serif;
     }
 
     .restaurant-chat-input:focus {
@@ -266,6 +277,8 @@
       cursor: pointer;
       font-weight: bold;
       min-width: 78px;
+      font-size: 14px;
+      transition: opacity 0.15s;
     }
 
     .restaurant-send-btn:disabled {
@@ -411,6 +424,8 @@
 
   sendBtn.addEventListener("click", sendMessage);
 
+  // ─── HELPERS ─────────────────────────────────────────────────────
+
   function addMessage(text, sender) {
     const row = document.createElement("div");
     row.className = `restaurant-message-row ${sender}`;
@@ -456,33 +471,57 @@
     if (typing) typing.remove();
   }
 
+  // ─── MEMORY HELPERS ──────────────────────────────────────────────
+
+  /**
+   * Adds a message to the in-memory history and trims to MAX_HISTORY.
+   * role: "user" | "assistant"
+   */
+  function pushToHistory(role, content) {
+    conversationHistory.push({ role, content });
+    // Keep only the last MAX_HISTORY messages to avoid large payloads
+    if (conversationHistory.length > MAX_HISTORY) {
+      conversationHistory = conversationHistory.slice(
+        conversationHistory.length - MAX_HISTORY
+      );
+    }
+  }
+
+  // ─── SEND ────────────────────────────────────────────────────────
+
   async function sendMessage() {
     const message = input.value.trim();
     if (!message) return;
 
+    // 1. Show user bubble
     addMessage(message, "user");
     input.value = "";
     sendBtn.disabled = true;
     addTypingIndicator();
 
+    // 2. Add to history BEFORE sending (so n8n sees it as the last user turn)
+    pushToHistory("user", message);
+
     try {
       const response = await fetch(webhookUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message,
-          business_id: Number(businessId)
-        })
+          message,                          // current user message
+          business_id: Number(businessId),  // multi-tenant identifier
+          history: conversationHistory,     // last MAX_HISTORY turns
+        }),
       });
 
       const data = await response.json();
       removeTypingIndicator();
-      addMessage(
-        data.response || data.message || "No pude procesar la respuesta.",
-        "bot"
-      );
+
+      const botReply =
+        data.response || data.message || "No pude procesar la respuesta.";
+
+      // 3. Show bot bubble and save to history
+      addMessage(botReply, "bot");
+      pushToHistory("assistant", botReply);
     } catch (error) {
       removeTypingIndicator();
       addMessage("Hubo un problema al conectar con el asistente.", "bot");

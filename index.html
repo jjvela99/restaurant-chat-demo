@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Demo Restaurante – Widget Chat</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      padding: 40px;
+    }
+
+    h1 { color: #111827; }
+    p  { color: #6b7280; }
+  </style>
+</head>
+<body>
+
+  <h1>Demo restaurante</h1>
+  <p>Página de prueba del chatbot.</p>
+
+  <!-- Widget embebible: cambia los data-* para personalizar cada cliente -->
+  <script
+    src="./widget.js"
+    data-webhook="https://ai-automation-agency.app.n8n.cloud/webhook/restaurant-bot"
+    data-business-id="1"
+    data-bot-name="La Trattoria Madrid"
+    data-subtitle="Respuestas automáticas sobre horarios, ubicación y más"
+    data-primary-color="#111827"
+    data-position="right"
+    data-avatar-text="LT"
+    data-welcome="¡Hola! Soy el asistente de La Trattoria. ¿En qué puedo ayudarte?"
+    data-reserve-url=""
+  ></script>
+
+</body>
+</html>

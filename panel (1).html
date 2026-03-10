@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Administración</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #181c27;
+      --surface2: #1e2433;
+      --border:   rgba(255,255,255,0.07);
+      --accent:   #6366f1;
+      --accent2:  #818cf8;
+      --success:  #22c55e;
+      --danger:   #ef4444;
+      --warning:  #f59e0b;
+      --text:     #f1f5f9;
+      --muted:    #64748b;
+      --radius:   14px;
+      --radius-sm:8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+    /* ── SETUP / LOGIN SCREENS ── */
+    .screen {
+      min-height: 100vh;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(ellipse at 60% 0%, rgba(99,102,241,0.15) 0%, transparent 60%), var(--bg);
+    }
+    .screen.active { display: flex; }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+    }
+    .auth-logo {
+      width: 48px; height: 48px;
+      background: var(--accent);
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 28px;
+    }
+    .auth-card h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+    .auth-card p  { color: var(--muted); margin-bottom: 28px; font-size: 13px; line-height: 1.5; }
+
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.6px; margin-bottom: 8px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%; background: var(--surface2);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); padding: 12px 14px; font-size: 14px;
+      font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .field .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 20px; border-radius: var(--radius-sm);
+      border: none; cursor: pointer; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600; transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--accent); color: white; width: 100%; }
+    .btn-ghost   { background: var(--surface2); color: var(--text); }
+    .btn-danger  { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .btn-sm      { padding: 7px 12px; font-size: 12px; }
+
+    .alert-error {
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
+      color: var(--danger); border-radius: var(--radius-sm);
+      padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none;
+    }
+    .alert-info {
+      background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+      color: var(--accent2); border-radius: var(--radius-sm);
+      padding: 10px 14px; font-size: 12px; margin-bottom: 20px; line-height: 1.5;
+    }
+    .divider {
+      text-align: center; color: var(--muted); font-size: 12px;
+      margin: 20px 0; position: relative;
+    }
+    .divider::before, .divider::after {
+      content: ""; position: absolute; top: 50%; width: 42%; height: 1px;
+      background: var(--border);
+    }
+    .divider::before { left: 0; } .divider::after { right: 0; }
+
+    /* ── APP SHELL ── */
+    #app { display: none; min-height: 100vh; }
+
+    .sidebar {
+      position: fixed; top: 0; left: 0; width: 240px; height: 100vh;
+      background: var(--surface); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; z-index: 100; padding: 24px 16px;
+    }
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; margin-bottom: 32px; }
+    .sidebar-brand-icon { width: 34px; height: 34px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .sidebar-brand-name { font-weight: 700; font-size: 15px; line-height: 1.2; }
+    .sidebar-brand-sub  { font-size: 11px; color: var(--muted); }
+    .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+      border-radius: var(--radius-sm); cursor: pointer; color: var(--muted);
+      font-weight: 500; transition: background 0.15s, color 0.15s;
+      border: none; background: none; font-family: 'DM Sans', sans-serif;
+      font-size: 14px; width: 100%; text-align: left;
+    }
+    .nav-item:hover  { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(99,102,241,0.15); color: var(--accent2); }
+    .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .sidebar-footer { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+    .business-badge { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 10px; }
+    .business-badge-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+    .business-badge-cat  { font-size: 11px; color: var(--muted); }
+    .btn-logout {
+      width: 100%; background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: 9px; border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-logout:hover { background: var(--surface2); color: var(--text); }
+
+    .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .page-header p  { color: var(--muted); font-size: 13px; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .stat-value { font-size: 32px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 6px; }
+    .stat-sub   { font-size: 12px; color: var(--muted); }
+    .stat-card.accent  .stat-value { color: var(--accent2); }
+    .stat-card.success .stat-value { color: var(--success); }
+    .stat-card.warning .stat-value { color: var(--warning); }
+    .stat-card.danger  .stat-value { color: var(--danger); }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+    .card-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .card-header h3 { font-size: 15px; font-weight: 600; }
+    .card-body { padding: 20px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .td-muted { color: var(--muted); font-size: 12px; }
+
+    .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge-success { background: rgba(34,197,94,0.12);  color: var(--success); }
+    .badge-warning { background: rgba(245,158,11,0.12); color: var(--warning); }
+    .badge-danger  { background: rgba(239,68,68,0.12);  color: var(--danger); }
+    .badge-neutral { background: rgba(100,116,139,0.15);color: var(--muted); }
+
+    .config-layout { display: grid; grid-template-columns: 1fr 300px; gap: 24px; align-items: start; }
+    .widget-preview-wrap { position: sticky; top: 32px; }
+    .widget-preview { border-radius: 18px; overflow: hidden; border: 1px solid var(--border); font-family: Arial, sans-serif; }
+    .wp-header { padding: 16px; color: white; }
+    .wp-header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .wp-avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .wp-name { font-weight: 700; font-size: 15px; }
+    .wp-sub  { font-size: 12px; opacity: 0.85; }
+    .wp-body { background: #f9fafb; padding: 14px; min-height: 100px; }
+    .wp-bubble { background: white; border: 1px solid #e5e7eb; border-radius: 14px; border-bottom-left-radius: 4px; padding: 10px 12px; font-size: 13px; color: #111827; max-width: 85%; line-height: 1.4; }
+    .wp-input { padding: 10px 14px; border-top: 1px solid #e5e7eb; background: white; display: flex; gap: 8px; }
+    .wp-input-field { flex: 1; background: #f3f4f6; border: none; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #6b7280; }
+    .wp-send { border-radius: 8px; border: none; color: white; padding: 8px 12px; font-size: 12px; font-weight: 700; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 28px; width: 100%; max-width: 480px; box-shadow: 0 32px 80px rgba(0,0,0,0.6); }
+    .modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+    .empty-state-icon { font-size: 36px; margin-bottom: 12px; }
+    .empty-state p { font-size: 13px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; padding: 48px; color: var(--muted); gap: 10px; }
+    .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .search-input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); padding: 9px 14px; font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; width: 220px; }
+    .search-input:focus { border-color: var(--accent); }
+
+    #toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 18px; font-size: 13px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); z-index: 9999; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 20px; }
+      .config-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1: SETUP (primera vez — pedir credenciales Supabase) ══ -->
+<div class="screen active" id="screen-setup">
+  <div class="auth-card">
+    <div class="auth-logo">🔧</div>
+    <h1>Configuración inicial</h1>
+    <p>Introduce tus credenciales de Supabase. Se guardan solo en este navegador y nunca se suben a ningún servidor.</p>
+    <div class="alert-info">
+      📍 Encuéntralas en <strong>Supabase → Settings → API</strong><br>
+      Necesitas la <strong>Project URL</strong> y la <strong>anon public key</strong>.
+    </div>
+    <div class="field">
+      <label>Supabase URL</label>
+      <input type="url" id="setup-url" placeholder="https://xxxx.supabase.co" />
+    </div>
+    <div class="field">
+      <label>Anon Key</label>
+      <input type="password" id="setup-key" placeholder="eyJhbGci..." />
+      <div class="hint">Usa la clave <strong>anon public</strong>, nunca la service_role key.</div>
+    </div>
+    <div class="alert-error" id="setup-error">No se pudo conectar. Verifica la URL y la clave.</div>
+    <button class="btn btn-primary" onclick="saveSetup()">Guardar y continuar</button>
+  </div>
+</div>
+
+<!-- ══ SCREEN 2: LOGIN (email + password del negocio) ══════════════ -->
+<div class="screen" id="screen-login">
+  <div class="auth-card">
+    <div class="auth-logo">🤖</div>
+    <h1>Panel de administración</h1>
+    <p>Accede con las credenciales de tu negocio.</p>
+    <div class="alert-error" id="login-error">Email o contraseña incorrectos.</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@email.com" />
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••" />
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Entrar</button>
+    <div class="divider">o</div>
+    <button class="btn btn-ghost" style="width:100%;font-size:13px" onclick="resetSetup()">⚙️ Cambiar credenciales de Supabase</button>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════════════ -->
+<div id="app">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">🤖</div>
+      <div>
+        <div class="sidebar-brand-name">BotPanel</div>
+        <div class="sidebar-brand-sub">Admin</div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-page="dashboard"     onclick="showPage(this)"><span class="nav-icon">📊</span> Dashboard</button>
+      <button class="nav-item"        data-page="knowledge"     onclick="showPage(this)"><span class="nav-icon">🧠</span> Conocimiento</button>
+      <button class="nav-item"        data-page="conversations" onclick="showPage(this)"><span class="nav-icon">💬</span> Conversaciones</button>
+      <button class="nav-item"        data-page="reservations"  onclick="showPage(this)"><span class="nav-icon">📅</span> Reservaciones</button>
+      <button class="nav-item"        data-page="config"        onclick="showPage(this)"><span class="nav-icon">⚙️</span> Configuración</button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="business-badge">
+        <div class="business-badge-name" id="sb-name">—</div>
+        <div class="business-badge-cat"  id="sb-cat">—</div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header"><h2>Dashboard</h2><p>Resumen de actividad de tu bot</p></div>
+      <div class="stats-grid" id="stats-grid"><div class="loading"><div class="spinner"></div></div></div>
+      <div class="card">
+        <div class="card-header"><h3>Conversaciones recientes</h3></div>
+        <div id="recent-convs"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- KNOWLEDGE -->
+    <div class="page" id="page-knowledge">
+      <div class="page-header"><h2>Conocimiento del bot</h2><p>Edita las preguntas y respuestas que usa tu asistente</p></div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Base de conocimiento</h3>
+          <button class="btn btn-primary btn-sm" onclick="openAddKnowledge()">+ Añadir</button>
+        </div>
+        <div id="knowledge-list"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- CONVERSATIONS -->
+    <div class="page" id="page-conversations">
+      <div class="page-header"><h2>Conversaciones</h2><p>Historial completo de chats con tu bot</p></div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Historial</h3>
+          <input class="search-input" placeholder="🔍 Buscar..." id="conv-search" oninput="filterConversations()" />
+        </div>
+        <div id="conv-table"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- RESERVATIONS -->
+    <div class="page" id="page-reservations">
+      <div class="page-header"><h2>Reservaciones</h2><p>Gestiona las reservas recibidas a través del bot</p></div>
+      <div class="card">
+        <div class="card-header"><h3>Reservas</h3></div>
+        <div id="reservations-table"><div class="loading"><div class="spinner"></div></div></div>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="page" id="page-config">
+      <div class="page-header"><h2>Configuración del widget</h2><p>Personaliza la apariencia de tu bot</p></div>
+      <div class="config-layout">
+        <div class="card">
+          <div class="card-header"><h3>Ajustes</h3></div>
+          <div class="card-body">
+            <div class="field"><label>Nombre del bot</label><input type="text" id="cfg-botname" oninput="updatePreview()" /></div>
+            <div class="field"><label>Subtítulo</label><input type="text" id="cfg-subtitle" oninput="updatePreview()" /></div>
+            <div class="field"><label>Mensaje de bienvenida</label><textarea id="cfg-welcome" oninput="updatePreview()"></textarea></div>
+            <div class="field"><label>Avatar (2-3 letras)</label><input type="text" id="cfg-avatar" maxlength="3" oninput="updatePreview()" /></div>
+            <div class="field"><label>Color principal</label><input type="color" id="cfg-color" oninput="updatePreview()" /></div>
+            <div class="field"><label>Posición</label><select id="cfg-position"><option value="right">Derecha</option><option value="left">Izquierda</option></select></div>
+            <div class="field"><label>URL de reservas (opcional)</label><input type="url" id="cfg-reserve" placeholder="https://..." /></div>
+            <button class="btn btn-primary" onclick="saveConfig()" style="margin-top:8px">Guardar cambios</button>
+          </div>
+        </div>
+        <div class="widget-preview-wrap">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Vista previa</p>
+          <div class="widget-preview">
+            <div class="wp-header" id="wp-header">
+              <div class="wp-header-top">
+                <div class="wp-avatar" id="wp-avatar">AI</div>
+                <div><div class="wp-name" id="wp-name">Nombre del bot</div><div class="wp-sub" id="wp-sub">Subtítulo</div></div>
+              </div>
+            </div>
+            <div class="wp-body"><div class="wp-bubble" id="wp-welcome">¡Hola! ¿En qué puedo ayudarte?</div></div>
+            <div class="wp-input">
+              <div class="wp-input-field">Escribe tu pregunta...</div>
+              <button class="wp-send" id="wp-send">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL conocimiento -->
+<div class="modal-overlay" id="knowledge-modal">
+  <div class="modal">
+    <h3 id="modal-title">Añadir conocimiento</h3>
+    <input type="hidden" id="k-id" />
+    <div class="field"><label>Tipo</label><input type="text" id="k-type" placeholder="horario, ubicacion, menu..." /></div>
+    <div class="field"><label>Pregunta</label><input type="text" id="k-question" placeholder="¿A qué hora abren?" /></div>
+    <div class="field"><label>Respuesta</label><textarea id="k-answer"></textarea></div>
+    <div class="field"><label>Tags (separados por coma)</label><input type="text" id="k-tags" placeholder="horario, apertura" /></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveKnowledge()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── ESTADO ───────────────────────────────────────────────────────
+  let SUPABASE_URL = "";
+  let SUPABASE_KEY = "";
+  let currentBusiness  = null;
+  let allConversations = [];
+
+  // ── INIT ─────────────────────────────────────────────────────────
+  window.addEventListener("DOMContentLoaded", () => {
+    SUPABASE_URL = localStorage.getItem("sb_url") || "";
+    SUPABASE_KEY = localStorage.getItem("sb_key") || "";
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      showScreen("setup");
+      return;
+    }
+
+    const saved = sessionStorage.getItem("biz");
+    if (saved) {
+      currentBusiness = JSON.parse(saved);
+      startApp();
+    } else {
+      showScreen("login");
+    }
+  });
+
+  function showScreen(name) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    const el = document.getElementById(`screen-${name}`);
+    if (el) el.classList.add("active");
+    document.getElementById("app").style.display = "none";
+  }
+
+  // ── SETUP ─────────────────────────────────────────────────────────
+  async function saveSetup() {
+    const url = document.getElementById("setup-url").value.trim().replace(/\/$/, "");
+    const key = document.getElementById("setup-key").value.trim();
+    const errEl = document.getElementById("setup-error");
+    errEl.style.display = "none";
+
+    if (!url || !key) { errEl.textContent = "Completa ambos campos."; errEl.style.display = "block"; return; }
+
+    // Verificar que las credenciales funcionan
+    try {
+      const res = await fetch(`${url}/rest/v1/businesses?limit=1`, {
+        headers: { "apikey": key, "Authorization": `Bearer ${key}` }
+      });
+      if (!res.ok) throw new Error();
+      localStorage.setItem("sb_url", url);
+      localStorage.setItem("sb_key", key);
+      SUPABASE_URL = url;
+      SUPABASE_KEY = key;
+      showScreen("login");
+    } catch {
+      errEl.textContent = "No se pudo conectar. Verifica la URL y la clave.";
+      errEl.style.display = "block";
+    }
+  }
+
+  function resetSetup() {
+    localStorage.removeItem("sb_url");
+    localStorage.removeItem("sb_key");
+    showScreen("setup");
+  }
+
+  // ── LOGIN ─────────────────────────────────────────────────────────
+  async function doLogin() {
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value.trim();
+    const errEl    = document.getElementById("login-error");
+    errEl.style.display = "none";
+
+    try {
+      const rows = await sb(`businesses?panel_email=eq.${encodeURIComponent(email)}&panel_password=eq.${encodeURIComponent(password)}&limit=1`);
+      if (!rows || rows.length === 0) { errEl.style.display = "block"; return; }
+      currentBusiness = rows[0];
+      sessionStorage.setItem("biz", JSON.stringify(currentBusiness));
+      startApp();
+    } catch {
+      errEl.textContent = "Error al conectar.";
+      errEl.style.display = "block";
+    }
+  }
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Enter" && document.getElementById("screen-login").classList.contains("active")) doLogin();
+    if (e.key === "Enter" && document.getElementById("screen-setup").classList.contains("active")) saveSetup();
+  });
+
+  function doLogout() {
+    sessionStorage.removeItem("biz");
+    currentBusiness = null;
+    document.getElementById("app").style.display = "none";
+    showScreen("login");
+  }
+
+  function startApp() {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    document.getElementById("app").style.display = "block";
+    document.getElementById("sb-name").textContent = currentBusiness.business_name || "Mi negocio";
+    document.getElementById("sb-cat").textContent  = currentBusiness.category || "";
+    loadDashboard();
+  }
+
+  // ── SUPABASE HELPER ───────────────────────────────────────────────
+  async function sb(path, options = {}) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: {
+        "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json", "Prefer": options.prefer || "",
+        ...options.headers,
+      },
+      method: options.method || "GET",
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+    if (!res.ok && res.status !== 204) { const e = await res.json().catch(() => ({})); throw new Error(e.message || res.statusText); }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+
+  // ── NAVIGATION ───────────────────────────────────────────────────
+  function showPage(btn) {
+    const name = btn.dataset.page;
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+    document.getElementById(`page-${name}`).classList.add("active");
+    btn.classList.add("active");
+    if (name === "knowledge")     loadKnowledge();
+    if (name === "conversations") loadConversations();
+    if (name === "reservations")  loadReservations();
+    if (name === "config")        loadConfig();
+  }
+
+  // ── DASHBOARD ────────────────────────────────────────────────────
+  async function loadDashboard() {
+    const bid = currentBusiness.id;
+    const [convs, knowledge, reservations] = await Promise.all([
+      sb(`conversations?business_id=eq.${bid}&order=created_at.desc`),
+      sb(`business_knowledge?business_id=eq.${bid}`),
+      sb(`reservations?business_id=eq.${bid}`),
+    ]);
+    const escalated = (convs||[]).filter(c => c.escalated).length;
+    const pending   = (reservations||[]).filter(r => r.status === "pending").length;
+
+    document.getElementById("stats-grid").innerHTML = `
+      <div class="stat-card accent"><div class="stat-label">Conversaciones</div><div class="stat-value">${(convs||[]).length}</div><div class="stat-sub">Total histórico</div></div>
+      <div class="stat-card warning"><div class="stat-label">Escaladas</div><div class="stat-value">${escalated}</div><div class="stat-sub">Sin respuesta del bot</div></div>
+      <div class="stat-card success"><div class="stat-label">Conocimientos</div><div class="stat-value">${(knowledge||[]).length}</div><div class="stat-sub">Entradas en la base</div></div>
+      <div class="stat-card ${pending > 0 ? "warning" : "success"}"><div class="stat-label">Reservas pendientes</div><div class="stat-value">${pending}</div><div class="stat-sub">Por confirmar</div></div>
+    `;
+
+    const recent = (convs||[]).slice(0, 8);
+    document.getElementById("recent-convs").innerHTML = !recent.length
+      ? `<div class="empty-state"><div class="empty-state-icon">💬</div><p>Sin conversaciones aún</p></div>`
+      : `<table><thead><tr><th>Mensaje</th><th>Respuesta</th><th>Intención</th><th>Fecha</th></tr></thead><tbody>
+          ${recent.map(c => `<tr>
+            <td>${trunc(c.user_message,60)}</td>
+            <td class="td-muted">${trunc(c.ai_response,60)}</td>
+            <td>${c.intent ? `<span class="badge badge-neutral">${c.intent}</span>` : "—"}</td>
+            <td class="td-muted">${fmtDate(c.created_at)}</td>
+          </tr>`).join("")}
+        </tbody></table>`;
+  }
+
+  // ── KNOWLEDGE ────────────────────────────────────────────────────
+  async function loadKnowledge() {
+    const rows = await sb(`business_knowledge?business_id=eq.${currentBusiness.id}&order=created_at.desc`);
+    const el   = document.getElementById("knowledge-list");
+    if (!rows?.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🧠</div><p>Sin entradas. Añade tu primera respuesta.</p></div>`; return; }
+    el.innerHTML = `<table><thead><tr><th>Tipo</th><th>Pregunta</th><th>Respuesta</th><th>Tags</th><th></th></tr></thead><tbody>
+      ${rows.map(r => `<tr>
+        <td><span class="badge badge-neutral">${r.question_type||"—"}</span></td>
+        <td>${trunc(r.question,50)}</td>
+        <td class="td-muted">${trunc(r.answer,70)}</td>
+        <td class="td-muted">${r.tags||"—"}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick='openEditKnowledge(${JSON.stringify(r)})'>✏️</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteKnowledge(${r.id})">🗑</button>
+        </td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  function openAddKnowledge() {
+    document.getElementById("modal-title").textContent = "Añadir conocimiento";
+    ["k-id","k-type","k-question","k-answer","k-tags"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("knowledge-modal").classList.add("open");
+  }
+
+  function openEditKnowledge(r) {
+    document.getElementById("modal-title").textContent = "Editar conocimiento";
+    document.getElementById("k-id").value       = r.id;
+    document.getElementById("k-type").value     = r.question_type||"";
+    document.getElementById("k-question").value = r.question||"";
+    document.getElementById("k-answer").value   = r.answer||"";
+    document.getElementById("k-tags").value     = r.tags||"";
+    document.getElementById("knowledge-modal").classList.add("open");
+  }
+
+  function closeModal() { document.getElementById("knowledge-modal").classList.remove("open"); }
+
+  async function saveKnowledge() {
+    const id   = document.getElementById("k-id").value;
+    const body = {
+      business_id:   currentBusiness.id,
+      question_type: document.getElementById("k-type").value.trim(),
+      question:      document.getElementById("k-question").value.trim(),
+      answer:        document.getElementById("k-answer").value.trim(),
+      tags:          document.getElementById("k-tags").value.trim(),
+    };
+    if (!body.question || !body.answer) { showToast("⚠️ Pregunta y respuesta son obligatorias"); return; }
+    try {
+      if (id) await sb(`business_knowledge?id=eq.${id}`, { method:"PATCH", body, prefer:"return=minimal" });
+      else     await sb(`business_knowledge`,             { method:"POST",  body, prefer:"return=minimal" });
+      closeModal(); showToast("✅ Guardado"); loadKnowledge();
+    } catch(e) { showToast("❌ Error: " + e.message); }
+  }
+
+  async function deleteKnowledge(id) {
+    if (!confirm("¿Eliminar esta entrada?")) return;
+    await sb(`business_knowledge?id=eq.${id}`, { method:"DELETE" });
+    showToast("🗑 Eliminado"); loadKnowledge();
+  }
+
+  // ── CONVERSATIONS ────────────────────────────────────────────────
+  async function loadConversations() {
+    allConversations = await sb(`conversations?business_id=eq.${currentBusiness.id}&order=created_at.desc&limit=200`) || [];
+    renderConversations(allConversations);
+  }
+
+  function filterConversations() {
+    const q = document.getElementById("conv-search").value.toLowerCase();
+    renderConversations(allConversations.filter(c =>
+      (c.user_message||"").toLowerCase().includes(q) ||
+      (c.ai_response||"").toLowerCase().includes(q) ||
+      (c.intent||"").toLowerCase().includes(q)
+    ));
+  }
+
+  function renderConversations(rows) {
+    const el = document.getElementById("conv-table");
+    if (!rows.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><p>Sin conversaciones</p></div>`; return; }
+    el.innerHTML = `<table><thead><tr><th>Mensaje</th><th>Respuesta</th><th>Intención</th><th>Confianza</th><th>Escalada</th><th>Fecha</th></tr></thead><tbody>
+      ${rows.map(c => `<tr>
+        <td>${trunc(c.user_message,55)}</td>
+        <td class="td-muted">${trunc(c.ai_response,55)}</td>
+        <td>${c.intent ? `<span class="badge badge-neutral">${c.intent}</span>` : "—"}</td>
+        <td class="td-muted">${c.confidence != null ? (c.confidence*100).toFixed(0)+"%" : "—"}</td>
+        <td>${c.escalated ? '<span class="badge badge-danger">Sí</span>' : '<span class="badge badge-success">No</span>'}</td>
+        <td class="td-muted">${fmtDate(c.created_at)}</td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  // ── RESERVATIONS ─────────────────────────────────────────────────
+  async function loadReservations() {
+    const rows = await sb(`reservations?business_id=eq.${currentBusiness.id}&order=reservation_date.desc`) || [];
+    const el   = document.getElementById("reservations-table");
+    if (!rows.length) { el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📅</div><p>Sin reservaciones aún</p></div>`; return; }
+    el.innerHTML = `<table><thead><tr><th>Cliente</th><th>Teléfono</th><th>Fecha</th><th>Hora</th><th>Personas</th><th>Notas</th><th>Estado</th><th></th></tr></thead><tbody>
+      ${rows.map(r => `<tr>
+        <td>${r.customer_name||"—"}</td>
+        <td class="td-muted">${r.phone||"—"}</td>
+        <td>${r.reservation_date||"—"}</td>
+        <td>${r.reservation_time||"—"}</td>
+        <td>${r.party_size||"—"}</td>
+        <td class="td-muted">${trunc(r.special_notes,40)||"—"}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td><select onchange="updateResStatus(${r.id},this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:12px;">
+          <option value="pending"   ${r.status==="pending"   ?"selected":""}>Pendiente</option>
+          <option value="confirmed" ${r.status==="confirmed" ?"selected":""}>Confirmada</option>
+          <option value="cancelled" ${r.status==="cancelled" ?"selected":""}>Cancelada</option>
+        </select></td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  async function updateResStatus(id, status) {
+    await sb(`reservations?id=eq.${id}`, { method:"PATCH", body:{status}, prefer:"return=minimal" });
+    showToast("✅ Estado actualizado");
+  }
+
+  // ── CONFIG ───────────────────────────────────────────────────────
+  function loadConfig() {
+    const b = currentBusiness;
+    document.getElementById("cfg-botname").value  = b.bot_name        || b.business_name || "";
+    document.getElementById("cfg-subtitle").value = b.subtitle        || "";
+    document.getElementById("cfg-welcome").value  = b.welcome_msg     || "";
+    document.getElementById("cfg-avatar").value   = b.avatar_text     || "";
+    document.getElementById("cfg-color").value    = b.primary_color   || "#111827";
+    document.getElementById("cfg-position").value = b.widget_position || "right";
+    document.getElementById("cfg-reserve").value  = b.reserve_url     || "";
+    updatePreview();
+  }
+
+  function updatePreview() {
+    const color   = document.getElementById("cfg-color").value;
+    const name    = document.getElementById("cfg-botname").value  || "Nombre del bot";
+    const sub     = document.getElementById("cfg-subtitle").value || "Subtítulo";
+    const welcome = document.getElementById("cfg-welcome").value  || "¡Hola! ¿En qué puedo ayudarte?";
+    const avatar  = document.getElementById("cfg-avatar").value   || "AI";
+    document.getElementById("wp-header").style.background = `linear-gradient(135deg,${color},#1f2937)`;
+    document.getElementById("wp-avatar").textContent  = avatar;
+    document.getElementById("wp-name").textContent    = name;
+    document.getElementById("wp-sub").textContent     = sub;
+    document.getElementById("wp-welcome").textContent = welcome;
+    document.getElementById("wp-send").style.background = color;
+  }
+
+  async function saveConfig() {
+    const body = {
+      bot_name:        document.getElementById("cfg-botname").value.trim(),
+      subtitle:        document.getElementById("cfg-subtitle").value.trim(),
+      welcome_msg:     document.getElementById("cfg-welcome").value.trim(),
+      avatar_text:     document.getElementById("cfg-avatar").value.trim(),
+      primary_color:   document.getElementById("cfg-color").value,
+      widget_position: document.getElementById("cfg-position").value,
+      reserve_url:     document.getElementById("cfg-reserve").value.trim(),
+    };
+    try {
+      await sb(`businesses?id=eq.${currentBusiness.id}`, { method:"PATCH", body, prefer:"return=minimal" });
+      Object.assign(currentBusiness, body);
+      sessionStorage.setItem("biz", JSON.stringify(currentBusiness));
+      showToast("✅ Configuración guardada");
+    } catch(e) { showToast("❌ Error: " + e.message); }
+  }
+
+  // ── UTILS ────────────────────────────────────────────────────────
+  function trunc(str, n) { if (!str) return "—"; return str.length > n ? str.slice(0,n)+"…" : str; }
+  function fmtDate(iso)  { if (!iso) return "—"; return new Date(iso).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}); }
+  function statusBadge(s) {
+    const map = { pending:["badge-warning","Pendiente"], confirmed:["badge-success","Confirmada"], cancelled:["badge-danger","Cancelada"] };
+    const [cls,label] = map[s]||["badge-neutral",s||"—"];
+    return `<span class="badge ${cls}">${label}</span>`;
+  }
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 3000);
+  }
+</script>
+</body>
+</html>
